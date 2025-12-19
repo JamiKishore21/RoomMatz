@@ -81,11 +81,13 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    console.log("[LOGIN] Generating token for:", user._id);
     const token = jwt.sign(
-      { userId: user._id, role: user.role || 'user' },
+      { userId: user._id.toString(), role: user.role || 'user' },
       process.env.JWT_SECRET || 'roommatz_default_secret_key_2024',
       { expiresIn: "7d" }
     );
+
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -97,9 +99,10 @@ router.post("/login", async (req, res) => {
     res.json({ message: "Login successful", user });
 
   } catch (error) {
-    console.error("Login Error:", error.message);
-    res.status(500).json({ message: "Server error" });
+    console.error("Login Error:", error);
+    res.status(500).json({ message: "Server error", error: error.message, stack: error.stack });
   }
+
 });
 
 router.post("/forgot-password", async (req, res) => {
