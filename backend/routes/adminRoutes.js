@@ -10,7 +10,7 @@ import Notification from '../models/Notification.js';
 import { verifyAdminToken, verifyToken } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET || 'roommatz_default_secret_key_2024';
 let io = null;
 
 export const setIO = (socketIO) => {
