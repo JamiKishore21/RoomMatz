@@ -10,7 +10,10 @@ export const verifyAdminToken = (req, res, next) => {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || 'roommatz_default_secret_key_2024'
+    );
     if (!decoded.isAdmin || decoded.role !== 'admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
@@ -18,8 +21,10 @@ export const verifyAdminToken = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (err) {
+    console.error("Admin Token Verify Error:", err.message);
     res.status(401).json({ error: 'Invalid token' });
   }
+
 };
 
 export const verifyToken = (req, res, next) => {
@@ -30,10 +35,14 @@ export const verifyToken = (req, res, next) => {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || 'roommatz_default_secret_key_2024'
+    );
     req.user = decoded;
     next();
   } catch (err) {
+    console.error("Token Verify Error:", err.message);
     res.status(401).json({ error: 'Invalid token' });
   }
 };

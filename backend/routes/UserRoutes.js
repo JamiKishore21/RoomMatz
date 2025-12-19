@@ -4,6 +4,8 @@ import User from "../models/User.js";
 import Room from "../models/Room.js";
 import Booking from "../models/Booking.js";
 import nodemailer from "nodemailer"
+import jwt from "jsonwebtoken";
+
 
 const router = express.Router();
 
@@ -40,9 +42,10 @@ router.post("/register", async (req, res) => {
 
     const token = jwt.sign(
       { userId: user._id, role: user.role || 'user' },
-      JWT_SECRET,
+      process.env.JWT_SECRET || 'roommatz_default_secret_key_2024',
       { expiresIn: "7d" }
     );
+
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -80,7 +83,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { userId: user._id, role: user.role || 'user' },
-      JWT_SECRET,
+      process.env.JWT_SECRET || 'roommatz_default_secret_key_2024',
       { expiresIn: "7d" }
     );
 

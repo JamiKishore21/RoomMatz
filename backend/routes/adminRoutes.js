@@ -22,7 +22,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    
+
     if (!user || !user.isAdmin) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -34,7 +34,7 @@ router.post('/login', async (req, res) => {
 
     const token = jwt.sign(
       { id: user._id, email: user.email, isAdmin: user.isAdmin, role: user.role },
-      JWT_SECRET,
+      process.env.JWT_SECRET || 'roommatz_default_secret_key_2024',
       { expiresIn: '24h' }
     );
 
@@ -104,14 +104,14 @@ router.post('/rooms', verifyAdminToken, async (req, res) => {
 router.get('/rooms', verifyAdminToken, async (req, res) => {
   try {
     const rooms = await Room.find();
-    
+
     // Get active bookings for all rooms
     const roomIds = rooms.map(room => room._id);
     const activeBookings = await Booking.find({
       roomId: { $in: roomIds },
       status: { $in: ['confirmed', 'checked-in'] }
     }).populate('userId', 'name email');
-    
+
     // Group bookings by room
     const bookingsByRoom = {};
     activeBookings.forEach(booking => {
@@ -121,13 +121,13 @@ router.get('/rooms', verifyAdminToken, async (req, res) => {
       }
       bookingsByRoom[roomId].push(booking);
     });
-    
+
     // Add bookings to rooms
     const roomsWithBookings = rooms.map(room => ({
       ...room.toObject(),
       currentBookings: bookingsByRoom[room._id.toString()] || []
     }));
-    
+
     res.json(roomsWithBookings);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -162,11 +162,11 @@ router.get('/bookings', verifyAdminToken, async (req, res) => {
     const bookings = await Booking.find()
       .populate('userId', 'name email')
       .populate('roomId', 'roomNumber roomType')
-      .sort({ 
+      .sort({
         status: 1, // Sort by status (pending first, then confirmed, etc.)
         createdAt: -1 // Then by creation date (newest first)
       });
-    
+
     // Get payment details for each booking based on transaction ID or other matching criteria
     const bookingsWithPayments = await Promise.all(
       bookings.map(async (booking) => {
@@ -178,7 +178,7 @@ router.get('/bookings', verifyAdminToken, async (req, res) => {
             { transactionId: { $exists: true } }
           ]
         }).sort({ paymentDate: -1 }); // Get the most recent matching payment
-        
+
         return {
           ...booking.toObject(),
           paymentDetails: payment ? {
@@ -189,7 +189,7 @@ router.get('/bookings', verifyAdminToken, async (req, res) => {
         };
       })
     );
-    
+
     res.json(bookingsWithPayments);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -205,13 +205,13 @@ router.put('/bookings/:id/status', verifyAdminToken, async (req, res) => {
       { status, updatedAt: Date.now() },
       { new: true }
     ).populate('roomId');
-    
+
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
-    
+
     // Update room occupancy and status based on booking status
     if (booking.roomId) {
       const room = await Room.findById(booking.roomId._id);
-      
+
       if (status === 'confirmed' || status === 'checked-in') {
         // Increment occupancy when booking is confirmed or checked-in
         room.occupancy += 1;
@@ -232,12 +232,12 @@ router.put('/bookings/:id/status', verifyAdminToken, async (req, res) => {
         console.log(`Room ${room.roomNumber} occupancy decreased to ${room.occupancy}/${room.capacity}, status: ${room.status}`);
       }
     }
-    
+
     // Create notification for user
     try {
       let notificationTitle = '';
       let notificationMessage = '';
-      
+
       if (status === 'confirmed') {
         notificationTitle = 'Booking Confirmed!';
         notificationMessage = `Your booking for room ${booking.roomId?.roomNumber} has been confirmed. Check-in: ${new Date(booking.checkInDate).toLocaleDateString()}`;
@@ -254,7 +254,7 @@ router.put('/bookings/:id/status', verifyAdminToken, async (req, res) => {
         notificationTitle = 'Booking Pending';
         notificationMessage = `Your booking is under review. We will notify you once it's confirmed.`;
       }
-      
+
       if (notificationTitle) {
         const userNotification = new Notification({
           userId: booking.userId,
@@ -264,7 +264,7 @@ router.put('/bookings/:id/status', verifyAdminToken, async (req, res) => {
           message: notificationMessage
         });
         await userNotification.save();
-        
+
         // Emit real-time notification via Socket.io
         if (io) {
           io.emit('user-notification', {
@@ -276,13 +276,13 @@ router.put('/bookings/:id/status', verifyAdminToken, async (req, res) => {
             createdAt: new Date()
           });
         }
-        
+
         console.log(`[NOTIFICATION] Sent to user ${booking.userId}: ${notificationTitle}`);
       }
     } catch (notificationError) {
       console.log("[NOTIFICATION] Error creating user notification (non-critical):", notificationError.message);
     }
-    
+
     res.json(booking);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -294,13 +294,13 @@ router.delete('/bookings/:id', verifyAdminToken, async (req, res) => {
   try {
     const booking = await Booking.findByIdAndDelete(req.params.id).populate('roomId');
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
-    
+
     // Set room status back to available when booking is deleted
     if (booking.roomId) {
       await Room.findByIdAndUpdate(booking.roomId._id, { status: 'available' });
       console.log(`Room ${booking.roomId.roomNumber} status set to available after booking deletion`);
     }
-    
+
     res.json({ message: 'Booking deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -353,7 +353,7 @@ router.put('/users/:id/role', verifyAdminToken, async (req, res) => {
   try {
     const { role } = req.body;
     const allowedRoles = ['user', 'admin', 'student', 'staff', 'manager'];
-    
+
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({ error: 'Invalid role' });
     }
