@@ -21,12 +21,20 @@ const NotificationBell = ({ userType = 'user' }) => {
         const token = localStorage.getItem(userType === 'admin' ? 'adminToken' : 'token');
         const endpoint = userType === 'admin' ? '/api/notifications/admin' : '/api/notifications/user';
 
+        const headers = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
         const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
           credentials: 'include',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers
         });
+
+        if (!response.ok) {
+          console.warn('Notifications fetch status:', response.status);
+          return;
+        }
 
         const data = await response.json();
         setNotifications(data.notifications || []);
