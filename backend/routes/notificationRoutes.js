@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/admin', verifyAdminToken, async (req, res) => {
   try {
     const notifications = await Notification.find({
-      adminId: req.userId || req.body.adminId,
+      adminId: req.user.id || req.body.adminId,
       type: { $in: ['payment_submitted', 'payment_received'] }
     })
       .populate('bookingId', 'guestName roomId totalPrice')
@@ -17,7 +17,7 @@ router.get('/admin', verifyAdminToken, async (req, res) => {
       .limit(50);
     
     const unreadCount = await Notification.countDocuments({
-      adminId: req.userId || req.body.adminId,
+      adminId: req.user.id || req.body.adminId,
       isRead: false,
       type: { $in: ['payment_submitted', 'payment_received'] }
     });
@@ -33,7 +33,7 @@ router.get('/admin', verifyAdminToken, async (req, res) => {
 router.get('/user', verifyToken, async (req, res) => {
   try {
     const notifications = await Notification.find({
-      userId: req.userId,
+      userId: req.user.id,
       type: { $in: ['booking_confirmed', 'booking_status_updated', 'booking_cancelled'] }
     })
       .populate('bookingId', 'guestName roomId status')
@@ -41,7 +41,7 @@ router.get('/user', verifyToken, async (req, res) => {
       .limit(50);
     
     const unreadCount = await Notification.countDocuments({
-      userId: req.userId,
+      userId: req.user.id,
       isRead: false,
       type: { $in: ['booking_confirmed', 'booking_status_updated', 'booking_cancelled'] }
     });
