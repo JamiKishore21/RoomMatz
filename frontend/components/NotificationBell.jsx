@@ -22,9 +22,7 @@ const NotificationBell = ({ userType = 'user' }) => {
         const endpoint = userType === 'admin' ? '/api/notifications/admin' : '/api/notifications/user';
 
         const response = await fetch(`${import.meta.env.VITE_API_URL}${endpoint}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          credentials: 'include'
         });
 
         const data = await response.json();

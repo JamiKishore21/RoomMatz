@@ -1,6 +1,6 @@
 import express from "express";
 import bcrypt from "bcryptjs";
-import User from "../models/User.js"; 
+import User from "../models/User.js";
 import Room from "../models/Room.js";
 import Booking from "../models/Booking.js";
 import nodemailer from "nodemailer"
@@ -14,8 +14,8 @@ const transporter = nodemailer.createTransport({
   port: 465, // Use 587 for TLS if needed
   secure: true, // true for 465 (SSL), false for 587 (TLS)
   auth: {
-      user: "subhashtalluri68@gmail.com",
-      pass: "zjug ghbj esci edbq"
+    user: "subhashtalluri68@gmail.com",
+    pass: "zjug ghbj esci edbq"
   }
 });
 
@@ -38,7 +38,21 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hashedPassword });
 
+    const token = jwt.sign(
+      { userId: user._id, role: user.role || 'user' },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     res.status(201).json({ message: "User registered successfully", user });
+
   } catch (error) {
     console.error("Register Error:", error.message);
     res.status(500).json({ message: "Server error" });
@@ -64,7 +78,21 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    const token = jwt.sign(
+      { userId: user._id, role: user.role || 'user' },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     res.json({ message: "Login successful", user });
+
   } catch (error) {
     console.error("Login Error:", error.message);
     res.status(500).json({ message: "Server error" });
@@ -76,7 +104,7 @@ router.post("/forgot-password", async (req, res) => {
     console.log("[FORGOT PASSWORD] Request received:", req.body);
     console.log("EMAIL_USER:", process.env.EMAIL_USER);
     console.log("EMAIL_PASS:", process.env.EMAIL_PASS);
-  
+
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       return res.status(500).json({ message: "Email credentials are missing" });
     }
@@ -215,7 +243,7 @@ router.get("/profile/:email", async (req, res) => {
 router.get("/bookings/:email", async (req, res) => {
   try {
     console.log("[BOOKINGS] Fetching bookings for email:", req.params.email);
-    
+
     const user = await User.findOne({ email: req.params.email });
     if (!user) {
       console.log("[BOOKINGS] User not found for email:", req.params.email);
@@ -227,10 +255,10 @@ router.get("/bookings/:email", async (req, res) => {
     const bookings = await Booking.find({ userId: user._id })
       .populate('roomId', 'roomNumber roomType price capacity amenities')
       .sort({ createdAt: -1 });
-    
+
     console.log("[BOOKINGS] Found bookings count:", bookings.length);
     console.log("[BOOKINGS] Bookings data:", JSON.stringify(bookings, null, 2));
-    
+
     res.json(bookings);
   } catch (error) {
     console.error("[BOOKINGS ERROR]:", error.message, error.stack);
@@ -244,11 +272,11 @@ router.get("/debug/all-bookings", async (req, res) => {
     const allBookings = await Booking.find({})
       .populate('userId', 'email name')
       .populate('roomId', 'roomNumber roomType');
-    
+
     console.log("[DEBUG] Total bookings in DB:", allBookings.length);
-    res.json({ 
-      totalBookings: allBookings.length, 
-      bookings: allBookings 
+    res.json({
+      totalBookings: allBookings.length,
+      bookings: allBookings
     });
   } catch (error) {
     console.error("[DEBUG ERROR]:", error.message);

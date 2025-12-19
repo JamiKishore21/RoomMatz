@@ -4,6 +4,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
+import cookieParser from "cookie-parser";
+
 import paymentRoutes, { setIO as setPaymentIO } from "./routes/paymentRoutes.js";
 import adminRoutes, { setIO as setAdminIO } from "./routes/adminRoutes.js";
 import userRoutes from "./routes/UserRoutes.js";
@@ -55,17 +57,17 @@ setAdminIO(io);
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
-  
+
   socket.on('join-admin', (adminId) => {
     socket.join(`admin-${adminId}`);
     console.log(`Admin ${adminId} joined`);
   });
-  
+
   socket.on('join-user', (userId) => {
     socket.join(`user-${userId}`);
     console.log(`User ${userId} joined`);
   });
-  
+
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
   });
@@ -78,7 +80,10 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json()); 
+app.get("/", (req, res) => { res.send("Hello World"); });
+app.use(express.json());
+app.use(cookieParser());
+
 
 // Routes
 app.use("/api/users", userRoutes);
@@ -88,8 +93,8 @@ app.use("/api/notifications", notificationRoutes);
 
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("MongoDB connected"))
-.catch((err) => console.error("MongoDB connection error:", err));
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB connection error:", err));
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => console.log(`Server running on port ${PORT}`));
